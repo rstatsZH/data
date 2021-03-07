@@ -1,0 +1,102 @@
+---
+title: "Untitled"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+# Daten - Kursteilnehmer_innen
+
+Kursteilnehmer_innen werden als Vorbereitung auf den Kurs darum gebeten opendata.swiss zu öffnen und einen Datensatz im CSV Format zu identifizieren welcher sie interessiert. Die Datensätze werden auf Slack geteilt mit einer kurzen Begründung warum der Datensatz interessiert und warum dieser ausgewählt wurde.
+
+## rstatsZH-K001
+
+## Steuerbares Einkommen natürliche Pers. [Mio.Fr.] 
+
+Da wir versuchen, Indikatoren zur sozialen Lage einer politischen Gemeinde zu berücksichtigen, um möglicherweise regionale Bildungsdisparitäten zu beschreiben, finde ich folgende Daten spannend.
+
+### Meine Notizen
+
+Ein interessanter Datensatz, welcher es erlaubt einige Konzepte eizuführen:
+
+- read_delim()
+- filter(max())
+- arrange()
+- joins
+
+**TODO**
+
+- Geodaten für Kanton Zürich
+- Gemeinden, Population, etc.
+- 
+
+```{r}
+
+steuer_nat <- read_delim("https://www.web.statistik.zh.ch/ogd/data/KANTON_ZUERICH_283.csv", delim = ";")
+
+steuer_nat %>% 
+  filter(INDIKATOR_JAHR == max(INDIKATOR_JAHR)) %>% 
+  arrange(desc(INDIKATOR_VALUE)) %>% 
+  filter(BFS_NR != 0) 
+
+ggplot(data = steuer_nat, mapping = aes(x = ))
+
+```
+
+## Übersicht über alle Lernenden im Kanton Zürich
+
+```{r}
+
+"https://www.web.statistik.zh.ch/ogd/data/bista/ZH_Uebersicht_alle_Lernende.csv"
+```
+
+
+## rstatsZH-K002
+
+# Daten - Übungen 
+
+Im Kurs finden immer wieder Übungen mit Daten statt, welche wenig bis keine Manipulationen benötigen um visualisiert zu werden. Diese Datensätze werden hier gesammelt.
+
+## Corona Hilfen im Kulturbereich im Kanton Zürich
+
+```{r}
+corona_kultur <- read_csv("https://www.web.statistik.zh.ch/ogd/data/ji/fk/kultur_ausfallentschaedigung.csv") 
+
+ggplot(data = corona_kultur, 
+       mapping =  aes(x = Status, 
+                      fill = Sparte)) +
+  geom_bar(position = position_dodge()) +
+  facet_wrap(~Kategorie, nrow = 3) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+corona_kultur %>% 
+  group_by(Kategorie, Sparte) %>% 
+  summarise(
+    sum_beantragt = sum(Nachgefragt, na.rm = TRUE),
+    sum_bewilligt = sum(Beschluss, na.rm = TRUE)
+  ) %>% 
+  pivot_longer(cols = sum_beantragt:sum_bewilligt, names_to = "typ", values_to = "summe") %>% 
+  ggplot(aes(x = Kategorie, y = summe, fill = Sparte)) +
+  geom_col(position = position_dodge()) +
+  facet_wrap(~typ) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+
+corona_kultur %>% 
+  ggplot(aes(x = Nachgefragt, y = Beschluss)) +
+  geom_point() 
+
+
+```
+
+
+
