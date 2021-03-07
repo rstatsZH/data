@@ -21,8 +21,6 @@ Kursteilnehmer_innen werden als Vorbereitung auf den Kurs darum gebeten opendata
 
 ## Steuerbares Einkommen natürliche Pers. [Mio.Fr.] 
 
-Da wir versuchen, Indikatoren zur sozialen Lage einer politischen Gemeinde zu berücksichtigen, um möglicherweise regionale Bildungsdisparitäten zu beschreiben, finde ich folgende Daten spannend.
-
 ### Meine Notizen
 
 Ein interessanter Datensatz, welcher es erlaubt einige Konzepte eizuführen:
@@ -67,8 +65,20 @@ Im Kurs finden immer wieder Übungen mit Daten statt, welche wenig bis keine Man
 
 ## Corona Hilfen im Kulturbereich im Kanton Zürich
 
+### Daten importieren
+
 ```{r}
-corona_kultur <- read_csv("https://www.web.statistik.zh.ch/ogd/data/ji/fk/kultur_ausfallentschaedigung.csv") 
+# Daten importieren
+
+corona_kultur <- read_csv("https://www.web.statistik.zh.ch/ogd/data/ji/fk/kultur_ausfallentschaedigung.csv")
+
+```
+
+### Daten erkunden
+
+```{r}
+
+# Daten visualisieren - Anzahl Anträge nach Sparte und Kategorie
 
 ggplot(data = corona_kultur, 
        mapping =  aes(x = Status, 
@@ -78,23 +88,39 @@ ggplot(data = corona_kultur,
   theme_bw() +
   theme(legend.position = "bottom")
 
+# Daten visualisieren - Beantragte und beschlossene Summe nach Sparte und Kategorie
+
+## Daten Manipulation 
+
 corona_kultur %>% 
   group_by(Kategorie, Sparte) %>% 
   summarise(
-    sum_beantragt = sum(Nachgefragt, na.rm = TRUE),
-    sum_bewilligt = sum(Beschluss, na.rm = TRUE)
+    beantragt = sum(Nachgefragt, na.rm = TRUE),
+    beschlossen = sum(Beschluss, na.rm = TRUE)
   ) %>% 
-  pivot_longer(cols = sum_beantragt:sum_bewilligt, names_to = "typ", values_to = "summe") %>% 
-  ggplot(aes(x = Kategorie, y = summe, fill = Sparte)) +
+  pivot_longer(cols = beantragt:beschlossen, names_to = "typ", values_to = "summe") %>% 
+  
+## Daten Visualisierung 
+  
+  ggplot(aes(x = reorder(Sparte, summe), y = summe, fill = typ)) +
   geom_col(position = position_dodge()) +
-  facet_wrap(~typ) +
+  facet_wrap(~Kategorie) +
+  scale_fill_brewer(type = "qual", palette = "Dark2") +
+  scale_y_continuous(labels = scales::label_number(scale = 1 / 1e6, prefix = "CHF ")) +
+  labs(
+    title = "Corona Hilfen im Kulturbereich im Kanton Zürich",
+    subtitle = "Beantragte und beschlossene Summe nach Sparte und Kategorie",
+    caption = "Datenquelle: Fachstelle OGD des Kantons Zürich",
+    x = "",
+    y = "Summe in Millionen"
+    ) +
   coord_flip() +
-  theme(legend.position = "bottom")
-
-corona_kultur %>% 
-  ggplot(aes(x = Nachgefragt, y = Beschluss)) +
-  geom_point() 
-
+  theme_bw(base_size = 16) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    panel.grid.major.y = element_blank()
+    ) 
 
 ```
 
