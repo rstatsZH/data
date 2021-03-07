@@ -76,6 +76,10 @@ corona_kultur <- read_csv("https://www.web.statistik.zh.ch/ogd/data/ji/fk/kultur
 
 ### Daten erkunden
 
+In der Sparte "Musik" wurden die grössten Beträge für Corona Hilfen im Kulturbereich beantragt und bewilligt. Bei gemeinnützigen Kulturunternhmen und Kulturschaffenden macht dies den grössten Anteil aus.
+
+Danke für die tollen Daten @OpenDataZH und Fachstelle Kultur @KantonZuerich!
+
 ```{r}
 
 # Daten visualisieren - Anzahl Anträge nach Sparte und Kategorie
