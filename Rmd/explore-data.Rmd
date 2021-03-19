@@ -87,7 +87,7 @@ Danke für die tollen Daten @OpenDataZH und Fachstelle Kultur @KantonZuerich!
 ggplot(data = corona_kultur, 
        mapping =  aes(x = Status, 
                       fill = Sparte)) +
-  geom_bar(position = position_dodge()) +
+  geom_bar() +
   facet_wrap(~Kategorie, nrow = 3) +
   theme_bw() +
   theme(legend.position = "bottom")
@@ -128,5 +128,45 @@ corona_kultur %>%
 
 ```
 
+## Covid19 Daten Schweiz
 
+### Daten importieren
+
+
+```{r}
+covid19zh <- read_csv("https://raw.githubusercontent.com/openZH/covid_19/master/COVID19_Fallzahlen_CH_total_v2.csv")
+```
+
+
+### Daten manipulieren
+
+```{r}
+covid19zh_n_conf <- covid19zh %>% 
+  select(date, abbreviation_canton_and_fl, ncumul_conf) %>% 
+  arrange(abbreviation_canton_and_fl, date) %>% 
+  group_by(abbreviation_canton_and_fl) %>% 
+  mutate(n_conf = ncumul_conf - lag(ncumul_conf))
+```
+
+### Daten visualisieren
+
+```{r}
+
+ggplot(data = covid19zh_n_conf, mapping =  aes(x = date, y = n_conf, color = abbreviation_canton_and_fl)) +
+  geom_line() +
+  facet_wrap(~abbreviation_canton_and_fl) +
+  geom_line() +
+  scale_x_date(date_labels = "%B %d") # month and day
+
+ggplot(data = covid19zh, 
+       mapping = aes(x = date, 
+                     y = ncumul_conf)) +
+  geom_line() +
+  scale_x_date(date_labels = "%W", date_breaks = "2 weeks") # month and day
+
+```
+
+
+```{r}
+```
 
