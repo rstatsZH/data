@@ -51,9 +51,63 @@ ggplot(data = steuer_nat, mapping = aes(x = ))
 
 ## Übersicht über alle Lernenden im Kanton Zürich
 
+### Daten importieren
+
+1. Code ausführen. Was ist mit der Warnung? Was könnte diese bedeuten?
+2. Ladet die CSV lokal auf euer Arbeitsgerät und öffnet diese mit MS Excel
+3. Schaut in Zeile 1961 in Spalte A. Was steht dort`? 
+4. Beschreibe was mit der Zeile `locale = locale(encoding = "ISO-8859-1")` erreicht wird
+
 ```{r}
 
-"https://www.web.statistik.zh.ch/ogd/data/bista/ZH_Uebersicht_alle_Lernende.csv"
+lernende <- read_csv("https://www.web.statistik.zh.ch/ogd/data/bista/ZH_Uebersicht_alle_Lernende.csv", 
+                     locale = locale(encoding = "ISO-8859-1"))
+
+lernende_2019 <- lernende %>% 
+  filter(Jahr == 2019) %>% 
+  drop_na() 
+
+```
+
+
+```{r}
+
+lernende %>% 
+  glimpse()
+
+```
+
+```{r}
+
+lernende %>% 
+  filter(Jahr == 2019) %>% 
+
+ggplot(aes(x = Schultyp, y = Anzahl, fill = Nationalitaet)) +
+  geom_col() +
+  coord_flip() 
+
+
+ggplot(lernende_2019, aes(x = Stufe, y = Anzahl, fill = Nationalitaet)) +
+  geom_col() +
+  coord_flip()
+
+lernende %>%
+  filter(Jahr == 2019) %>% 
+  filter(Schultyp %in% c("Mittelschule", "Volksschule")) %>% 
+  count(Schultyp)
+  group_by(Stufe) %>% 
+  count()
+
+  
+lernende_2019 %>% 
+  count(Stufe, Schultyp, wt = Anzahl)
+
+glimpse(lernende)
+
+lernende %>% 
+  count(Schultyp)
+  gglot(aes(x = Stufe, y = Anzahl)) 
+
 ```
 
 
@@ -104,7 +158,7 @@ corona_kultur %>%
   ) %>% 
   pivot_longer(cols = beantragt:beschlossen, names_to = "typ", values_to = "summe") %>% 
   
-## Daten Visualisierung 
+  ## Daten Visualisierung 
   
   ggplot(aes(x = reorder(Sparte, summe), y = summe, fill = typ)) +
   geom_col(position = position_dodge()) +
@@ -117,14 +171,14 @@ corona_kultur %>%
     caption = "Datenquelle: Fachstelle OGD des Kantons Zürich",
     x = "",
     y = "Summe in Millionen"
-    ) +
+  ) +
   coord_flip() +
   theme_bw(base_size = 16) +
   theme(
     legend.position = "bottom",
     legend.title = element_blank(),
     panel.grid.major.y = element_blank()
-    ) 
+  ) 
 
 ```
 
