@@ -19,9 +19,211 @@ Kursteilnehmer_innen werden als Vorbereitung auf den Kurs darum gebeten opendata
 
 ## rstatsZH-K001
 
-## Steuerbares Einkommen natürliche Pers. [Mio.Fr.] 
+## 
 
-### Meine Notizen
+https://opendata.swiss/de/dataset/ehedaten-kanton-zurich-16-bis-18-jahrhundert
+
+### Daten importieren
+
+```{r}
+
+download_link <- "https://zenodo.org/record/3964315/files/EDB_16_18_Jh_Stand_2020_07_22.CSV?download=1"
+
+ehedaten <- read_delim(download_link, delim = ";",
+                       locale = locale(encoding = "ISO-8859-1")) 
+
+
+```
+
+### Daten transformieren
+
+```{r}
+
+## Was macht die Funktion `clean_names()` aus dem `janitor` R Package?
+
+ehedaten_tidy <- ehedaten %>% 
+  janitor::clean_names() %>% 
+  select(-signatur, -seite_im_band, -weblink) %>% 
+  mutate(datum = parse_date(entstehungszeitraum, format = "%Y.%m.%d")) %>% 
+  select(-entstehungszeitraum) %>% 
+  filter(!is.na(datum)) %>% 
+  mutate(
+    jahr = year(datum),
+    monat = month(datum, label = TRUE),
+    tag = day(datum),
+    wochentag = wday(datum, label = TRUE, week_start = 1)
+  )
+
+## Könnten separate nutzen um die Jahre mit Monat nicht zu verlieren
+## separate(col = entstehungszeitraum,  into = c("jahr", "monat", "tag"), remove = FALSE)
+
+
+# Hinterlasst 4145 Reihen welche nicht auf Datum gewechselt werden können
+# Deshalb parse_date nutzen und Format angeben
+# ehedaten %>% 
+#  janitor::clean_names() %>% 
+#   mutate(entstehungszeitraum2 = lubridate::ymd(entstehungszeitraum)) %>% 
+#    filter(is.na(entstehungszeitraum))
+  
+
+
+```
+
+
+```{r}
+
+# Was sind die häufigsten 10 Nachnahmen der Männer?
+
+ehedaten_tidy %>%
+  count(nachname_mann) %>% 
+  arrange(desc(n))
+
+# Was sind die häufigsten 10 Nachnahmen der Frauen?
+
+ehedaten_tidy %>%
+  janitor::clean_names() %>% 
+  count(nachname_frau) %>% 
+  arrange(desc(n))
+
+# Wieviele Männder mit dem Nachnamen Huber, haben Frauen mit dem Nachnamen Huber geheiratet? 
+# Und wieviele davon haben die gleiche Herkunft?
+
+ehedaten_tidy %>% 
+  filter(nachname_mann == "Huber" & nachname_frau == "Huber") %>% 
+  filter(herkunft_mann == herkunft_frau)
+
+# Für wieviele Jahre gibt es Eheschliessungen?
+
+ehedaten_tidy %>% 
+  mutate(jahr = year(datum))
+  count(jahr) 
+  
+# Was sind die Top Ten Kirchengemeinden in denen geheiratet wurde?
+  
+ehedaten_tidy %>% 
+  count(kirchgemeinde) %>% 
+  arrange(desc(n))
+
+# In welchen Monaten wurde am häufigsten geheiratet?
+
+ehedaten_tidy %>% 
+  group_by(monat) %>% 
+  count()
+
+# An welchem Tag wurden im Grossmünster die meisten Ehen geschlossen?
+
+ehedaten_tidy %>% 
+  filter(kirchgemeinde == "Grossmünster") %>% 
+  count(datum) %>% 
+  arrange(desc(n))
+
+# Wieviele Ehen wurden im Durchschnitt pro Kirchengemeinde über alle Jahre geschlossen?
+
+ehedaten_tidy %>% 
+  group_by(kirchgemeinde, jahr) %>% 
+  summarise(
+    anzahl = n()
+  ) %>% 
+  summarise(
+    durchschnitt = mean(anzahl),
+    median = median(anzahl),
+    standardabweichung = sd(anzahl)
+  ) %>% 
+  arrange(desc(durchschnitt))
+
+
+# Versuche auf das Ergebnis visuell und über eine zusammenfassende Statistik zu kommen
+
+library(lubridate)
+
+ehedaten_tidy %>% 
+  ggplot(aes(x = datum)) +
+  geom_histogram(bins = 277) +
+  scale_x_date(breaks = "25 years") +
+  coord_flip()
+
+# Welche zwei Jahre stechen hier besonders heraus? 
+
+ehedaten_tidy %>% 
+  count(jahr) %>% 
+  filter(jahr < 1637) %>% 
+  arrange(desc(n))
+
+# 
+
+ehedaten_tidy %>% 
+  count(monat, tag)  %>% 
+  ggplot(aes(x = monat, y = n, group = tag)) +
+  geom_line()
+
+
+ehedaten_tidy %>% 
+  count(monat, tag)  %>% 
+  ggplot(aes(x = tag, y = n, group = monat, color = monat)) +
+  geom_line() +
+  facet_wrap(~monat)
+
+ehedaten_tidy %>% 
+  count(monat, wochentag) %>% 
+   ggplot(aes(x = wochentag, y = n, group = monat, color = monat)) +
+  geom_line() +
+  facet_wrap(~monat)
+
+ehedaten_tidy %>% 
+  count(monat, wochentag) %>% 
+  
+  ggplot(aes(x = monat, y = n)) +
+  geom_col() +
+  facet_wrap(~wochentag)
+
+
+## was ist der prozentuale anteil an Eheschliessungen in den Kirchengemeinden Top Ten Kirchengemeinden
+
+ehedaten_tidy %>% 
+  count(kirchgemeinde) %>% 
+  mutate(prozent = n / sum(n) * 100) %>% 
+  arrange(desc(n))
+
+# identifiziere die Top 10 Kirchengemeinden und speicher das Ergenis der
+# Kirchengemeinden als Vektor
+
+top_10_kirchegemeinden <- ehedaten_tidy %>% 
+  #filter(!kirchgemeinde %in% c("Grossmünster", "St. Peter")) %>% 
+  count(kirchgemeinde) %>% 
+  arrange(desc(n)) %>% 
+  head(10) %>% 
+  pull(kirchgemeinde)
+
+
+ehedaten_tidy %>% 
+  filter(kirchgemeinde %in% top_10_kirchegemeinden) %>% 
+  count(kirchgemeinde, monat, wochentag) %>% 
+  
+  ggplot(aes(x = monat, y = n)) +
+  geom_col() +
+  facet_wrap(~wochentag)
+   
+
+ehedaten_tidy %>% 
+  group_by(kirchgemeinde, wochentag) %>% 
+  count() %>% 
+  group_by(kirchgemeinde) %>% 
+  summarise(
+    prozent = n / sum(n) * 100
+  ) %>% 
+  arrange(desc(prozent))
+  group_by(kirchgemeinde) %>% 
+  summarise(
+    prozent = n / sum(n) * 100
+  )
+
+```
+
+
+
+### Steuerbares Einkommen natürliche Pers. [Mio.Fr.] 
+
+#### Meine Notizen
 
 Ein interessanter Datensatz, welcher es erlaubt einige Konzepte eizuführen:
 
