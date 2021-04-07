@@ -13,12 +13,31 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
+# Daten - Geodaten
+
+- https://www.zh.ch/de/planen-bauen/geoinformation/geodaten.html
+- Geographisches Informationssystem des Kantons Zürich (GIS-ZH), Produktname, Link zum Geodatensatz im Geolion (https://www.geolion.zh.ch/[Geodatensatz]).
+- https://maps.zh.ch/?topic=BASISKARTEZH&amp;showtab=ogddownload
+
+```{r}
+
+library(sf)
+
+geo_gemeinden <- st_read(here::here("data/raw/Gemeindegrenzen/UP_GEMEINDEN_SEEN_F.shp"))
+
+geo_gemeinden %>% 
+  ggplot() +
+  geom_sf()
+
+
+```
+
+
 # Daten - Kursteilnehmer_innen
 
 Kursteilnehmer_innen werden als Vorbereitung auf den Kurs darum gebeten opendata.swiss zu öffnen und einen Datensatz im CSV Format zu identifizieren welcher sie interessiert. Die Datensätze werden auf Slack geteilt mit einer kurzen Begründung warum der Datensatz interessiert und warum dieser ausgewählt wurde.
 
 ## rstatsZH-K001
-
 
 ### Verzeichnis der Personenstammdaten der zentralen Verwaltung des Kantons Zürich 
 
@@ -59,9 +78,9 @@ library(readxl) # https://readxl.tidyverse.org/
 # was sehen wir?
 # read_excel(path = here::here("data/raw/je-d-14.05.01.03.xlsx"))
 
-gesundheit <- read_excel(path = here::here("data/raw/je-d-14.05.01.03.xlsx"), 
-           skip = 2, 
-           n_max = 43)
+gesundheit <- read_excel(path = here::here("data/raw/kosten_gesundheitswesen/je-d-14.05.01.03.xlsx"), 
+                         skip = 2, 
+                         n_max = 43)
 
 gesundheit_total <- gesundheit %>% 
   slice(-1) %>% 
@@ -101,13 +120,165 @@ gesundheit_sparte %>%
   geom_line() +
   facet_wrap(~kategorie_code, scales = "free_y") +
   
+  
+  
+  
+  ```
 
 
+### Treibhausgasemissionen Stadt Zürich, ohne Klimakorrektur, 1990 - 2016 
+
+Treibhausgasemissionen in der Stadt Zürich, inklusive internationalem Flugverkehr, ohne Klimakorrektur [t CO2eq/Person]
+
+- https://opendata.swiss/de/dataset/treibhausgasemissionen-stadt-zurich-ohne-klimakorrektur-1990-20163/resource/0c342b77-ad97-46cf-b138-cb83decf96f3
+
+```{r}
+
+ghg <- read_csv("https://data.stadt-zuerich.ch/dataset/ugz_treibhausgasbilanz/download/ugz_treibhausgasbilanz.csv")
+
+
+ghg_long <- ghg %>% 
+  rename(jahr = Jahr) %>% 
+  pivot_longer(cols = !jahr, names_to = "kategorie", values_to = "emissionen") %>% 
+  group_by(jahr) %>% 
+  mutate(prozent = emissionen / sum(emissionen) * 100) %>% 
+  ungroup()
+
+
+ghg_long %>%   
+  ggplot(aes(x = jahr, y = emissionen, fill = kategorie)) +
+  geom_area() 
+
+ghg_long %>%   
+  ggplot(aes(x = jahr, y = prozent, fill = kategorie)) +
+  geom_area() 
+
+
+ghg_long %>% 
+  filter(jahr == max(jahr) | jahr == min(jahr)) %>% 
+  ggplot(aes(x = jahr, y = prozent, group = kategorie, color = kategorie)) +
+  geom_line() +
+  geom_point(size = 3) +
+  scale_x_continuous(limits = c(1990, 2016), breaks = c(1990, 2016)) +
+  scale_color_brewer(type = "qual") +
+  theme_minimal(base_size = 16) +
+  theme(panel.grid.minor = element_blank())
 
 
 ```
 
+### Neuzulassungen Elektromotor [%] 
 
+Anteil der Personenwagen (PW) mit Elektromotor an allen Personenwagen, die zwischen dem 1. Oktober des Vorjahrs und dem 30. September erstmals in Verkehr gesetzt wurden. Hinweis: Der Wert für den ganzen Kanton umfasst alle Autos mit einem Zürcher Kennzeichen; diese können auch Personen oder Unternehmen gehören, die ihr Domizil nicht im Kanton Zürich haben.
+
+
+```{r}
+
+read_delim("https://www.web.statistik.zh.ch/ogd/data/KANTON_ZUERICH_612.csv", delim = ";") 
+
+```
+
+
+### Bauinv. Wohnen [Fr./Einw.] 
+
+Durchschnittliche Bauinvestitionen im Bereich Wohnen (Bauinv. für EFH, MFH, andere Wohngebäude und übriges Wohnen), in Franken pro Einwohner.
+
+**Auch im Gemeindeporträt:** https://www.zh.ch/?tab=indikatoren&jahr=0&indikatoren=181&bfs=21
+
+```{r}
+
+bauinvest <- read_delim("https://www.web.statistik.zh.ch/ogd/data/KANTON_ZUERICH_178.csv", delim = ";")
+
+bauinvest2018 <- bauinvest %>% 
+  select(-X12) %>% 
+  rename_with(tolower) %>% 
+  group_by(bfs_nr) %>% 
+  filter(indikator_jahr == max(indikator_jahr)) %>% 
+  select(bfs_nr, indikator_name, indikator_value) %>% 
+  filter(bfs_nr != 0)
+
+geo_gemeinden %>% 
+  left_join(bauinvest2018, by = c("BFS" = "bfs_nr")) %>% 
+  ggplot(aes(fill = indikator_value)) +
+  geom_sf()
+
+
+```
+
+### Statistik der Informationszugangsgesuche nach IDG des Kantons Zürich 
+
+Die Verordnung über die Information und den Datenschutz schreibt vor, dass im Geschäftsbericht des Regierungsrates an den Kantonsrat statistische Angaben zu schriftlich eingereichten Informationszugangsgesuchen in der kantonalen Verwaltung zu machen sind (§ 30 IDV). Erfasst werden im Wesentlichen die Anzahl und die Erledigungsart der Gesuche, nicht aber die – praxisgemäss viel zahlreicheren – sogenannten formlosen Gesuche. Darunter fallen insbesondere die telefonischen oder per Mail eingereichten Anfragen. Spalten: 'jahr'; 'organisationseinheit'; 'gesuche_haengig_jan' (am 1. Januar des Jahres); 'gesuche_total' (des gesamten Jahres); 'zugang_uneingeschraenkt_gewaehrt'; 'zugang_teilweise_gewaehrt'; 'zugang_vollstaendig_abgelehnt'; 'anderweitige_erledigung' (z.B. Rückzug, Gegenstandslosigkeit); 'gesuche_haengig_dez' (am 31. Dezember des Jahres)
+
+https://opendata.swiss/de/dataset/statistik-der-informationszugangsgesuche-nach-idg-des-kantons-zurich
+
+```{r}
+
+infozugang <- read_csv("https://www.web.statistik.zh.ch/ogd/data/openzh/KANTON_ZUERICH_idg_statistik.csv")
+
+
+infozugang_long <- infozugang %>% 
+  filter(organisationseinheit != "Total") %>% 
+  select(!gesuche_total) %>% 
+  pivot_longer(!jahr:organisationseinheit, names_to = "kategorie", values_to = "anzahl")
+
+
+infozugang_long %>% 
+  ggplot(aes(x = jahr, y = anzahl, group = kategorie, color = kategorie)) +
+  geom_line() +
+  facet_wrap(~organisationseinheit)
+
+infozugang_long_sum <- infozugang_long %>% 
+  group_by(jahr, organisationseinheit) %>% 
+  summarise(
+    total = sum(anzahl, na.rm = TRUE),
+  ) %>% 
+  mutate(prozent = total / sum(total) * 100)
+
+
+infozugang_long_sum %>%   
+  ggplot(aes(x = jahr, y = total, group = organisationseinheit, color = organisationseinheit)) +
+  geom_line()
+
+infozugang_long_sum %>% 
+  ggplot(aes(x = jahr, y = prozent, group = organisationseinheit, fill = organisationseinheit)) +
+  geom_area() +
+  scale_fill_brewer(type = "qual")
+
+infozugang_long_sum %>% 
+  ggplot(aes(x = jahr, y = total, group = organisationseinheit, fill = organisationseinheit)) +
+  geom_area() +
+  scale_fill_brewer(type = "qual")
+
+```
+
+
+
+###  Eintragung von Partnerschaften nach Geschlecht und Herkunft, seit 2014 
+
+- https://opendata.swiss/de/dataset/eintragung-von-partnerschaften-nach-geschlecht-und-herkunft-seit-20141
+
+
+```{r}
+
+partnerschaft <- read_csv("https://data.stadt-zuerich.ch/dataset/bev_partnerschaft_geschlecht_herkunft_seit2014_od3321/download/BEV332OD3321.csv")
+
+partnerschaft %>%
+  ggplot(aes(x = EreignisDatJahr, y = Anzahl, group = HerkunftKomb, color = HerkunftKomb)) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer(type = "qual") +
+  facet_wrap(~SexLang, nrow = 1) 
+
+
+partnerschaft %>%
+  ggplot(aes(x = EreignisDatJahr, y = Anzahl, group = SexLang, color = SexLang)) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer(type = "qual") +
+  facet_wrap(~HerkunftKomb, nrow = 1) 
+
+
+```
 
 ### Ehedaten Kanton Zürich 16. bis 18. Jahrhundert 
 
@@ -154,7 +325,7 @@ ehedaten_tidy <- ehedaten %>%
 #  janitor::clean_names() %>% 
 #   mutate(entstehungszeitraum2 = lubridate::ymd(entstehungszeitraum)) %>% 
 #    filter(is.na(entstehungszeitraum))
-  
+
 
 
 ```
@@ -186,10 +357,10 @@ ehedaten_tidy %>%
 
 ehedaten_tidy %>% 
   mutate(jahr = year(datum))
-  count(jahr) 
-  
+count(jahr) 
+
 # Was sind die Top Ten Kirchengemeinden in denen geheiratet wurde?
-  
+
 ehedaten_tidy %>% 
   count(kirchgemeinde) %>% 
   arrange(desc(n))
@@ -255,7 +426,7 @@ ehedaten_tidy %>%
 
 ehedaten_tidy %>% 
   count(monat, wochentag) %>% 
-   ggplot(aes(x = wochentag, y = n, group = monat, color = monat)) +
+  ggplot(aes(x = wochentag, y = n, group = monat, color = monat)) +
   geom_line() +
   facet_wrap(~monat)
 
@@ -292,7 +463,7 @@ ehedaten_tidy %>%
   ggplot(aes(x = monat, y = n)) +
   geom_col() +
   facet_wrap(~wochentag)
-   
+
 
 ehedaten_tidy %>% 
   group_by(kirchgemeinde, wochentag) %>% 
@@ -302,7 +473,7 @@ ehedaten_tidy %>%
     prozent = n / sum(n) * 100
   ) %>% 
   arrange(desc(prozent))
-  group_by(kirchgemeinde) %>% 
+group_by(kirchgemeinde) %>% 
   summarise(
     prozent = n / sum(n) * 100
   )
@@ -373,8 +544,8 @@ lernende %>%
 
 lernende %>% 
   filter(Jahr == 2019) %>% 
-
-ggplot(aes(x = Schultyp, y = Anzahl, fill = Nationalitaet)) +
+  
+  ggplot(aes(x = Schultyp, y = Anzahl, fill = Nationalitaet)) +
   geom_col() +
   coord_flip() 
 
@@ -387,10 +558,10 @@ lernende %>%
   filter(Jahr == 2019) %>% 
   filter(Schultyp %in% c("Mittelschule", "Volksschule")) %>% 
   count(Schultyp)
-  group_by(Stufe) %>% 
+group_by(Stufe) %>% 
   count()
 
-  
+
 lernende_2019 %>% 
   count(Stufe, Schultyp, wt = Anzahl)
 
@@ -398,7 +569,7 @@ glimpse(lernende)
 
 lernende %>% 
   count(Schultyp)
-  gglot(aes(x = Stufe, y = Anzahl)) 
+gglot(aes(x = Stufe, y = Anzahl)) 
 
 ```
 
@@ -515,4 +686,8 @@ ggplot(data = covid19zh,
 
 ```{r}
 ```
+
+
+
+
 
