@@ -19,7 +19,97 @@ Kursteilnehmer_innen werden als Vorbereitung auf den Kurs darum gebeten opendata
 
 ## rstatsZH-K001
 
-## 
+
+### Verzeichnis der Personenstammdaten der zentralen Verwaltung des Kantons Zürich 
+
+- https://opendata.swiss/de/dataset/verzeichnis-der-personenstammdaten-der-zentralen-verwaltung-des-kantons-zurich
+
+```{r}
+
+stammdat_link1 <- "https://www.web.statistik.zh.ch/ogd/data/personenstammdatenverzeichnis_merkmale_register_systeme.csv"
+
+stammdat_link2 <- "https://www.web.statistik.zh.ch/ogd/data/personenstammdatenverzeichnis_merkmale_verwaltungseinheiten.csv"
+
+stammdat_link3 <- "https://www.web.statistik.zh.ch/ogd/data/personenstammdatenverzeichnis_abkuerzungen_definitionen.csv"
+
+dat1 <- read_csv(stammdat_link1)
+dat2 <- read_csv(stammdat_link2)
+
+dat1 %>% 
+  pivot_longer(UPI:betreibungsregister, names_to = "register", values_to = "erlaubnis") %>% 
+  count(erlaubnis)
+
+dat2 %>% 
+  pivot_longer(3:49, names_to = "verwaltungseinheit", values_to = "erlaubnis") %>% 
+  group_by(verwaltungseinheit, erlaubnis) %>% 
+  count() %>% 
+  arrange(erlaubnis)
+
+```
+
+
+### Kosten des Gesundheitswesens nach Leistungen 
+
+- https://opendata.swiss/de/dataset/kosten-des-gesundheitswesens-nach-leistungen6
+
+```{r}
+
+library(readxl) # https://readxl.tidyverse.org/
+
+# was sehen wir?
+# read_excel(path = here::here("data/raw/je-d-14.05.01.03.xlsx"))
+
+gesundheit <- read_excel(path = here::here("data/raw/je-d-14.05.01.03.xlsx"), 
+           skip = 2, 
+           n_max = 43)
+
+gesundheit_total <- gesundheit %>% 
+  slice(-1) %>% 
+  filter(str_length(...1) == 1) %>% 
+  rename(kategorie_code = ...1,
+         kategorie_name = ...2) %>% 
+  pivot_longer(cols = !c(kategorie_code, kategorie_name), 
+               names_to = "jahr", 
+               values_to = "mio_chf") %>% 
+  mutate(jahr = as.numeric(jahr))
+
+gesundheit_total %>% 
+  ggplot(aes(x = jahr, y = mio_chf, group = kategorie_name, color = kategorie_name)) +
+  geom_line() 
+
+
+gesundheit_sparte <- gesundheit %>% 
+  slice(-1) %>% 
+  mutate(kategorie_code = case_when(
+    str_length(...1) == 1 ~ ...1,
+    TRUE ~ NA_character_
+  )) %>% 
+  relocate(kategorie_code) %>% 
+  fill(kategorie_code) %>% 
+  filter(str_length(...1) > 1) %>% 
+  rename(sparte_code = ...1,
+         sparte_name = ...2) %>% 
+  pivot_longer(cols = !kategorie_code:sparte_name,
+               names_to = "jahr",
+               values_to = "mio_chf", 
+               values_drop_na = TRUE) %>% 
+  mutate(jahr = as.numeric(jahr))
+
+
+gesundheit_sparte %>% 
+  ggplot(aes(x = jahr, y = mio_chf, group = sparte_code)) +
+  geom_line() +
+  facet_wrap(~kategorie_code, scales = "free_y") +
+  
+
+
+
+
+```
+
+
+
+### Ehedaten Kanton Zürich 16. bis 18. Jahrhundert 
 
 https://opendata.swiss/de/dataset/ehedaten-kanton-zurich-16-bis-18-jahrhundert
 
