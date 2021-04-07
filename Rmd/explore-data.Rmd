@@ -13,7 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-# Daten - Geodaten
+# Daten 
+
+## Geodaten
 
 - https://www.zh.ch/de/planen-bauen/geoinformation/geodaten.html
 - Geographisches Informationssystem des Kantons Zürich (GIS-ZH), Produktname, Link zum Geodatensatz im Geolion (https://www.geolion.zh.ch/[Geodatensatz]).
@@ -29,6 +31,18 @@ geo_gemeinden %>%
   ggplot() +
   geom_sf()
 
+
+```
+
+## Wohnbevölkerung
+
+
+```{r}
+
+## Gesamtbevölkerung
+
+gemeinde_bev <- read_delim("https://www.web.statistik.zh.ch/ogd/data/KANTON_ZUERICH_133.csv", delim = ";") %>% 
+  rename_with(tolower)
 
 ```
 
@@ -214,7 +228,6 @@ https://opendata.swiss/de/dataset/statistik-der-informationszugangsgesuche-nach-
 ```{r}
 
 infozugang <- read_csv("https://www.web.statistik.zh.ch/ogd/data/openzh/KANTON_ZUERICH_idg_statistik.csv")
-
 
 infozugang_long <- infozugang %>% 
   filter(organisationseinheit != "Total") %>% 
@@ -480,7 +493,7 @@ group_by(kirchgemeinde) %>%
 
 ```
 
-
+## rstatsZH-K002
 
 ### Steuerbares Einkommen natürliche Pers. [Mio.Fr.] 
 
@@ -503,18 +516,45 @@ Ein interessanter Datensatz, welcher es erlaubt einige Konzepte eizuführen:
 
 steuer_nat <- read_delim("https://www.web.statistik.zh.ch/ogd/data/KANTON_ZUERICH_283.csv", delim = ";")
 
-steuer_nat %>% 
-  filter(INDIKATOR_JAHR == max(INDIKATOR_JAHR)) %>% 
-  arrange(desc(INDIKATOR_VALUE)) %>% 
-  filter(BFS_NR != 0) 
+steuer_nat2019 <- steuer_nat %>% 
+  rename_with(tolower) %>% 
+  filter(indikator_jahr == max(indikator_jahr)) %>% 
+  filter(bfs_nr != 0) %>% 
+  select(bfs_nr, indikator_name, indikator_value)
 
-ggplot(data = steuer_nat, mapping = aes(x = ))
+geo_gemeinden %>% 
+  left_join(steuer_nat2019, by = c("BFS" = "bfs_nr")) %>% 
+  ggplot(aes(fill = indikator_value)) +
+  geom_sf()
+
+
+gemeinde_bev2019 <- gemeinde_bev %>% 
+  filter(indikator_jahr == 2019) %>% 
+  filter(bfs_nr != 0)  %>% 
+  select(bfs_nr, indikator_name, indikator_value)
+
+
+steuerbar_pro_person <-  gemeinde_bev2019 %>% 
+  bind_rows(steuer_nat2019) %>% 
+  pivot_wider(names_from = indikator_name, values_from = indikator_value) %>% 
+  janitor::clean_names() %>% 
+  mutate(steuerbar_pro_person_1000_chf = steuerbares_einkommen_naturliche_pers_mio_fr / bevolkerung_pers * 1000) %>% 
+  mutate(steuerbar_pro_person_1000_chf_kat = cut_number(steuerbar_pro_person_1000_chf, n = 5)) 
+
+
+geo_gemeinden %>% 
+  left_join(steuerbar_pro_person, by = c("BFS" = "bfs_nr")) %>% 
+
+  ggplot(aes(fill = steuerbar_pro_person_1000_chf_kat)) +
+  geom_sf() + 
+  scale_fill_brewer(type = "div")
 
 ```
 
-## Übersicht über alle Lernenden im Kanton Zürich
 
-### Daten importieren
+### Übersicht über alle Lernenden im Kanton Zürich
+
+#### Daten importieren
 
 1. Code ausführen. Was ist mit der Warnung? Was könnte diese bedeuten?
 2. Ladet die CSV lokal auf euer Arbeitsgerät und öffnet diese mit MS Excel
@@ -573,8 +613,29 @@ gglot(aes(x = Stufe, y = Anzahl))
 
 ```
 
+### Nettoaufwand Bildung
 
-## rstatsZH-K002
+```{r}
+
+aufwand_bildung <- read_delim("https://www.web.statistik.zh.ch/ogd/data/KANTON_ZUERICH_421.csv", delim = ";") %>% 
+  rename_with(tolower)
+
+aufwand_bildung2019 <- aufwand_bildung %>% 
+  filter(indikator_jahr == max(indikator_jahr)) %>% 
+  filter(bfs_nr != 0)  %>% 
+  select(bfs_nr, indikator_name, indikator_value) %>% 
+  mutate(indikator_value_kat1 = cut_number(indikator_value / 1000, n = 5, dig.lab = 0)) %>% 
+  mutate(indikator_value_kat2 = cut_interval(indikator_value / 1000 , n = 5, dig.lab = 0)) 
+
+
+geo_gemeinden %>% 
+  left_join(aufwand_bildung2019, by = c("BFS" = "bfs_nr")) %>% 
+  ggplot(aes(fill = indikator_value_kat2)) +
+  geom_sf() 
+
+
+
+```
 
 # Daten - Übungen 
 
