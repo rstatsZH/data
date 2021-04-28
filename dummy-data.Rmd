@@ -1,0 +1,51 @@
+---
+title: "Dummy Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+# Supermarkt
+
+Drei Dataframes um das Arbeiten mit joins zu üben.
+
+```{r}
+
+tibble(
+  kunden_id = c(rep("k1", 3), rep("k2", 6)),
+  produkt_name = c("Chips", "Milch", "Avocado", "Pfirsich", "Birne", "Apfel", "Tomate", "Pfirsich", "Milch"),
+  einkauf = c(2, 3, 1, 2.5, 0.5, 2, 1.5, 1, 4),
+  einheit = c(rep("anzahl", 3), rep("kg", 5), "anzahl"),
+  ) %>% 
+  write_csv(here::here("data/raw/supermarkt/einkaeufe.csv"))
+
+tibble(
+  produkt_name = c("Toilettenpapier", "Chips", "Blaubeeren", "Milch", "Avocado", "Banane", "Birne", "Apfel", "Tomate", "Pfirsich"),
+  preis = c(14.30, 3.80, 7.80, 2.20, 3.20, 1.90, 2.60, 4.10, 2.70, 6.50)
+) %>% 
+  write_csv(here::here("data/raw/supermarkt/preise.csv"))
+
+
+randNames::rand_names(n = 5, nationality = "CH") %>%
+  mutate(kunden_id = c("k1", "k2", "k3", "k4", "k5")) %>% 
+  select(kunden_id, email, phone, 
+         vorname = name.first, 
+         nachname = name.last, 
+         wohnort = location.city, 
+         kanton = location.state,
+         plz = location.postcode,
+         geburtstag = dob.date,
+         alter = dob.age) %>% 
+  mutate(geburtstag = as.Date(geburtstag)) %>% 
+  write_csv(file = here::here("data/raw/supermarkt/kundenprofile.csv"))
+
+
+```
+

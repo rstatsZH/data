@@ -1,0 +1,6 @@
+kunden_id,email,phone,vorname,nachname,wohnort,kanton,plz,geburtstag,alter
+k1,edwin.dumont@example.com,075 474 42 06,Edwin,Dumont,Domleschg,Zug,8099,1967-08-14,54
+k2,leonora.garcia@example.com,076 874 68 14,Leonora,Garcia,Hornussen,Glarus,6894,1961-06-22,60
+k3,lydia.blanchard@example.com,079 402 11 78,Lydia,Blanchard,Albula/Alvra,Zug,5790,1959-04-11,62
+k4,maeva.moreau@example.com,076 835 32 51,Maeva,Moreau,Lostallo,Zürich,8113,1982-05-23,39
+k5,frank.legrand@example.com,077 451 33 29,Frank,Legrand,Stein am Rhein,Bern,4282,1997-05-07,24
