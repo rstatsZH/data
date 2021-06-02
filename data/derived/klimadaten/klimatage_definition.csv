@@ -1,0 +1,7 @@
+typ,definition
+Eistage,Anzahl Eistage (maximale Temperatur < 0 °C)
+Frosttage,Anzahl Frosttage (minimale Temperatur < 0 °C)
+Sommertage,Anzahl Sommertage (maximale Temperatur ≥ 25 °C)
+Hitzetage,Anzahl Hitzetage (maximale Temperatur ≥ 30 °C)
+Tropennächte,Anzahl Tropennächte (minimale Temperatur ≥ 20 °C)
+Niederschlagstage,Anzahl Tage mit Niederschlag (Tagestotal ≥ 1 mm)

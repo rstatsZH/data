@@ -163,13 +163,13 @@ gesundheit_sparte_tab %>%
   gt(
     rowname_col = "sparte_name",
     groupname_col = "kategorie_name"
-    ) %>% 
+  ) %>% 
   tab_header(title = "Kosten des Gesundheitswesens nach Leistungen 2010 bis 2018") %>% 
   tab_spanner(label = "In Millionen Franken",
               columns = vars(jahr_var)) %>% 
   fmt_number(columns = vars(jahr_var),
-    decimals = 0,
-    sep_mark =  " ") %>% 
+             decimals = 0,
+             sep_mark =  " ") %>% 
   tab_source_note(source_note = md("**Quelle:**  Bundesamt für Statistik (BFS) – Kosten und Finanzierung des Gesundheitswesens")) %>% 
   tab_source_note(source_note = md("**Datenbezug:** [opendata.swiss](https://opendata.swiss/de/dataset/kosten-des-gesundheitswesens-nach-leistungen6)"))
 
@@ -181,7 +181,7 @@ gesundheit_sparte %>%
   filter(jahr == max(jahr)) %>% 
   pivot_wider(names_from = "sparte_name", values_from = "mio_chf")
 
-  
+
 
 ```
 
@@ -858,10 +858,137 @@ Untidy:
 ```{r}
 
 download_link <- "https://www.bfs.admin.ch/bfsstatic/dam/assets/15964164/master"
-read_excel(download_link)
-
+download.file(url = download_link, destfile = here::here("data/raw/klimadaten/je-d-02.03.03.03.xlsx"))
 
 ```
+
+
+```{r}
+# Funktion für jedes Sheet im Excel
+
+tidy_klimatage <- function(sheet) {
+  
+  # Daten importieren
+  dat <- read_excel(
+    path = here::here("data/raw/klimadaten/je-d-02.03.03.03.xlsx"), 
+    skip = 4, 
+    sheet = sheet, 
+    n_max = 68)
+  
+  # Tages typ extrahieren
+  tag_typ <- 
+    read_excel(path = here::here("data/raw/klimadaten/je-d-02.03.03.03.xlsx"),
+               sheet = sheet) %>% 
+    select(1) %>%
+    names() %>% 
+    str_replace(pattern = "Klimadaten: ", replacement = "")
+  
+  # Daten aufräumen
+  dat_tidy <- dat %>% 
+    rename(jahr = 1) %>% 
+    slice(-1, -2, -3, -4) %>% 
+    pivot_longer(cols = !jahr,
+                 names_to = "ort",
+                 values_to = "tage") %>%
+    mutate(tage = as.numeric(tage)) %>% 
+    mutate(typ = tag_typ) %>% 
+    #left_join(messstation) %>% 
+    mutate(ort = str_replace(ort, pattern = " \\d\\)", replacement = ""))
+  
+  return(dat_tidy)
+  
+}
+
+# For loop für um Daten aus jedem sheet zu holen
+
+klimatage_list <- list()
+
+for (i in seq(1:6)) {
+  klimatage_list[[i]] <- tidy_klimatage(sheet = i)
+}
+
+# Liste zu dataframe
+
+klimatage <- klimatage_list %>% 
+  bind_rows()
+
+# Daten als CSV schreiben
+write_csv(klimatage, here::here("data/derived/klimadaten/klimatage.csv"))
+```
+
+
+```{r}
+
+# Messstationen extrahieren
+
+dat <- read_excel(
+  path = here::here("data/raw/klimadaten/je-d-02.03.03.03.xlsx"), 
+  skip = 4)
+
+messstation <- dat %>% 
+  select(-1) %>% 
+  slice(1) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "ort",
+               values_to = "meter_ueber_meer") %>% 
+  mutate(meter_ueber_meer = str_extract(meter_ueber_meer, pattern = "\\d+"),
+         meter_ueber_meer = as.numeric(meter_ueber_meer)) 
+
+
+write_csv(messstation, here::here("data/derived/klimadaten/messsation.csv"))
+
+# Definition Klimatag Typ extrahieren
+
+typ_definition <- vector(length = 6)
+tag_typ <- vector(length = 6)
+
+for (i in seq(1:6)) {
+  
+  typ_definition[[i]] <- 
+    read_excel(path = here::here("data/raw/klimadaten/je-d-02.03.03.03.xlsx"), 
+               sheet = i) %>% 
+    select(2) %>% 
+    slice(3) %>% 
+    pull() %>% 
+    str_sub(start = 1, end = -46)
+  
+  tag_typ[[i]] <- read_excel(path = here::here("data/raw/klimadaten/je-d-02.03.03.03.xlsx"),
+                             sheet = i) %>% 
+    select(1) %>%
+    names() %>% 
+    str_replace(pattern = "Klimadaten: ", replacement = "")
+}
+
+
+klimatage_definition <- tibble(typ = tag_typ,
+       definition = typ_definition)
+
+write_csv(klimatage_definition, here::here("data/derived/klimadaten/klimatage_definition.csv"))
+
+```
+
+
+```{r}
+
+klimatage %>% 
+  count(jahr)
+
+klimatage %>%  
+  filter(typ == "Tropennächte") %>% 
+  ggplot(aes(x = jahr, y = tage, color = typ)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ort)
+
+klimatage %>%  
+    filter(typ == "Tropennächte") %>% 
+  ggplot(aes(x = jahr, y = ort, fill = tage)) +
+  coord_fixed() +
+  geom_tile() +
+  facet_wrap(~typ, ncol = 1)
+
+```
+
 
 
 ## Corona Hilfen im Kulturbereich im Kanton Zürich
